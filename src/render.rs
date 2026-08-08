@@ -89,7 +89,7 @@ fn escape_attr(raw: &str, out: &mut String) {
     for c in raw.chars() {
         match c {
             '&' => out.push_str("&amp;"),
-            '"' => out.push_str("&quote;"),
+            '"' => out.push_str("&quot;"),
             '<' => out.push_str("&lt;"),
             _ => out.push(c),
         }
@@ -99,7 +99,7 @@ fn escape_attr(raw: &str, out: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::markup::{Condition, RawHtml, Tag};
+    use crate::markup::{AttrName, Condition, RawHtml, Tag};
 
     #[test]
     fn escape_text() {
@@ -123,6 +123,14 @@ mod tests {
             render(&nodes),
             "<!--[if !mso]><!-->everyone else<!--<![endif]-->"
         );
+    }
+
+    #[test]
+    fn quotes_in_attr_cannot_close_it() {
+        let nodes = vec![Node::Element(
+            Element::new(Tag::Img).attr(AttrName::Alt, AttrValue::Text(r#"a " onerror=x"#.into())),
+        )];
+        assert_eq!(render(&nodes), r#"<img alt="a &quot; onerror=x" />"#);
     }
 
     #[test]
