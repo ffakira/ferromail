@@ -129,14 +129,13 @@ impl Button {
         .child(Node::Element(Element::new(Tag::WAnchorLock)))
         .child(Node::Element(label));
 
-        // Everyone else: an inline-block anchor. line-height equal to height
-        // centres the label vertically without padding.
+        // Everyone else. line-height equal to height centres the label
+        // vertically without padding, which Outlook.com and Gmail both honour.
         let anchor = styled(
             Element::new(Tag::A)
                 .url_attr(UrlAttr::Href, self.href.clone())
                 .text(self.label.clone()),
             &[
-                ("border-radius", &radius),
                 ("display", "inline-block"),
                 ("font-size", &font_size),
                 ("font-weight", "bold"),
@@ -146,9 +145,39 @@ impl Button {
                 ("width", &width),
             ],
         )
-        .style(prop("background-color"), self.background.style_value())
         .style(prop("color"), self.color.style_value())
         .style(prop("font-family"), self.font_family.clone());
+
+        // The colour goes on a `td`, not the anchor: several webmail clients
+        // drop background and padding on inline elements. `bgcolor` repeats
+        // the declaration because some honour the attribute and ignore the
+        // CSS, and others do the reverse.
+        let cell = styled(
+            Element::new(Tag::Td)
+                .attr(AttrName::Align, AttrValue::Text("center".to_owned()))
+                .attr(
+                    AttrName::Bgcolor,
+                    AttrValue::Text(self.background.as_str().to_owned()),
+                ),
+            &[("border-radius", &radius)],
+        )
+        .style(prop("background-color"), self.background.style_value())
+        .child(Node::Element(anchor));
+
+        // role=presentation stops screen readers announcing a layout table as
+        // data. border/cellpadding/cellspacing are the attribute forms, which
+        // Outlook honours where the CSS equivalents are ignored.
+        let table = styled(
+            Element::new(Tag::Table)
+                .attr(AttrName::Role, AttrValue::Text("presentation".to_owned()))
+                .attr(AttrName::Border, AttrValue::Int(0))
+                .attr(AttrName::Cellpadding, AttrValue::Int(0))
+                .attr(AttrName::Cellspacing, AttrValue::Int(0)),
+            &[("border-collapse", "collapse")],
+        )
+        .child(Node::Element(
+            Element::new(Tag::Tr).child(Node::Element(cell)),
+        ));
 
         vec![
             Node::Conditional {
@@ -157,7 +186,7 @@ impl Button {
             },
             Node::Conditional {
                 cond: Condition::NotMso,
-                children: vec![Node::Element(anchor)],
+                children: vec![Node::Element(table)],
             },
         ]
     }
@@ -179,13 +208,19 @@ mod tests {
         assert!(html.contains("<w:anchorlock />"), "{html}");
         assert!(html.contains("arcsize=\"9%\""), "{html}");
 
-        // Fallback branch: downlevel-revealed.
+        // Fallback branch: downlevel-revealed, table-wrapped.
         assert!(html.contains("<!--[if !mso]><!-->"), "{html}");
         assert!(html.ends_with("<!--<![endif]-->"), "{html}");
+        assert!(html.contains(r#"<table role="presentation""#), "{html}");
         assert!(
             html.contains("<a href=\"https://example.com/confirm?a=1&amp;b=2\""),
             "{html}"
         );
+
+        // The colour is stated twice: attribute for clients that ignore the
+        // declaration, declaration for clients that ignore the attribute.
+        assert!(html.contains(r##"bgcolor="#2563eb""##), "{html}");
+        assert!(html.contains("background-color:#2563eb"), "{html}");
 
         // The label appears once per branch, never unescaped.
         assert_eq!(html.matches("Confirm").count(), 2, "{html}");
