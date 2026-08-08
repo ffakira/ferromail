@@ -13,7 +13,9 @@ exclude = [
     "docker-compose.yml",
     "examples/",
     "tests/",
+    "docs",
 ]
+rust-version = "1.85"
 
 [dev-dependencies]
 lettre = { version = "0.11.23", default-features = false, features = ["smtp-transport", "builder"] }
