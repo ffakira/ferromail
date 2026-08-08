@@ -11,9 +11,7 @@ impl RawHtml {
     pub fn trusted(html: impl Into<String>) -> Self {
         RawHtml(html.into())
     }
-}
 
-impl RawHtml {
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -51,11 +49,11 @@ impl Condition {
 }
 
 pub struct Element {
-    tag: Tag,
-    attrs: Vec<(AttrName, AttrValue)>,
-    class: Vec<ClassName>,
-    styles: StyleMap,
-    children: Vec<Node>,
+    pub tag: Tag,
+    pub attrs: Vec<(AttrName, AttrValue)>,
+    pub class: Vec<ClassName>,
+    pub styles: StyleMap,
+    pub children: Vec<Node>,
 }
 
 impl Element {
@@ -95,12 +93,24 @@ impl Element {
         &self.attrs
     }
 
-    pub fn class(&self) -> &[ClassName] {
+    pub fn classes(&self) -> &[ClassName] {
         &self.class
+    }
+
+    #[must_use]
+    pub fn class(mut self, name: ClassName) -> Self {
+        self.class.push(name);
+        self
     }
 
     pub fn styles(&self) -> &StyleMap {
         &self.styles
+    }
+
+    #[must_use]
+    pub fn style(mut self, prop: Property, value: StyleValue) -> Self {
+        self.styles.set(prop, value);
+        self
     }
 
     pub fn children(&self) -> &[Node] {
@@ -418,6 +428,10 @@ impl StyleMap {
             Some((_, slot)) => *slot = value,
             None => self.decls.push((prop, value)),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.decls.is_empty()
     }
 
     pub fn get(&self, prop: &Property) -> Option<&StyleValue> {

@@ -51,6 +51,33 @@ fn element_to(el: &Element, out: &mut String) {
         out.push('"');
     }
 
+    // No escaping below: ClassName, Property and StyleValue all reject the
+    // characters that could close the attribute, so they are safe by
+    // construction.
+    if !el.classes().is_empty() {
+        out.push_str(" class=\"");
+        for (i, class) in el.classes().iter().enumerate() {
+            if i > 0 {
+                out.push(' ');
+            }
+            out.push_str(class.as_str());
+        }
+        out.push('"');
+    }
+
+    if !el.styles().is_empty() {
+        out.push_str(" style=\"");
+        for (i, (prop, value)) in el.styles().declarations().enumerate() {
+            if i > 0 {
+                out.push(';');
+            }
+            out.push_str(prop.as_str());
+            out.push(':');
+            out.push_str(value.as_str());
+        }
+        out.push('"');
+    }
+
     if tag.is_void() {
         out.push_str(" />");
         return;
@@ -99,7 +126,7 @@ fn escape_attr(raw: &str, out: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::markup::{AttrName, Condition, RawHtml, Tag};
+    use crate::markup::{AttrName, ClassName, Condition, Property, RawHtml, StyleValue, Tag};
 
     #[test]
     fn escape_text() {
@@ -137,5 +164,21 @@ mod tests {
     fn raw_is_verbatim() {
         let nodes = vec![Node::Raw(RawHtml::trusted("<b>hi</b>"))];
         assert_eq!(render(&nodes), "<b>hi</b>");
+    }
+
+    #[test]
+    fn renders_class_and_style() {
+        let el = Element::new(Tag::Td)
+            .class(ClassName::new("stack").expect("valid"))
+            .style(
+                Property::new("color").expect("valid"),
+                StyleValue::parse("#333").expect("valid"),
+            )
+            .text("hi");
+
+        assert_eq!(
+            render(&[Node::Element(el)]),
+            r#"<td class="stack" style="color:#333">hi</td>"#
+        );
     }
 }
