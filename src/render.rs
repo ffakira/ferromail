@@ -43,6 +43,14 @@ fn element_to(el: &Element, out: &mut String) {
     out.push('<');
     out.push_str(tag.name());
 
+    for (name, url) in el.urls() {
+        out.push(' ');
+        out.push_str(name.name());
+        out.push_str("=\"");
+        escape_attr(url.as_str(), out);
+        out.push('"');
+    }
+
     for (name, value) in el.attrs() {
         out.push(' ');
         out.push_str(name.name());
@@ -126,7 +134,9 @@ fn escape_attr(raw: &str, out: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::markup::{AttrName, ClassName, Condition, Property, RawHtml, StyleValue, Tag};
+    use crate::markup::{
+        AttrName, ClassName, Condition, Property, RawHtml, StyleValue, Tag, Url, UrlAttr,
+    };
 
     #[test]
     fn escape_text() {
@@ -158,6 +168,24 @@ mod tests {
             Element::new(Tag::Img).attr(AttrName::Alt, AttrValue::Text(r#"a " onerror=x"#.into())),
         )];
         assert_eq!(render(&nodes), r#"<img alt="a &quot; onerror=x" />"#);
+    }
+
+    #[test]
+    fn url_attrs_come_from_parsed_urls() {
+        let el = Element::new(Tag::A)
+            .url_attr(
+                UrlAttr::Href,
+                Url::parse("https://x.com/a?b=1&c=2").expect("valid"),
+            )
+            .text("hi");
+
+        assert_eq!(
+            render(&[Node::Element(el)]),
+            r#"<a href="https://x.com/a?b=1&amp;c=2">hi</a>"#
+        );
+
+        // The scheme allowlist is the only door to href, and it is shut.
+        assert!(Url::parse("javascript:alert(1)").is_err());
     }
 
     #[test]

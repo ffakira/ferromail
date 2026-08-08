@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RawHtml(String);
 
 impl RawHtml {
@@ -17,6 +18,7 @@ impl RawHtml {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Node {
     Element(Element),
     Text(String),
@@ -48,12 +50,14 @@ impl Condition {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Element {
-    pub tag: Tag,
-    pub attrs: Vec<(AttrName, AttrValue)>,
-    pub class: Vec<ClassName>,
-    pub styles: StyleMap,
-    pub children: Vec<Node>,
+    tag: Tag,
+    attrs: Vec<(AttrName, AttrValue)>,
+    urls: Vec<(UrlAttr, Url)>,
+    class: Vec<ClassName>,
+    styles: StyleMap,
+    children: Vec<Node>,
 }
 
 impl Element {
@@ -61,6 +65,7 @@ impl Element {
         Self {
             tag,
             attrs: Vec::new(),
+            urls: Vec::new(),
             class: Vec::new(),
             styles: StyleMap::new(),
             children: Vec::new(),
@@ -71,6 +76,18 @@ impl Element {
     pub fn attr(mut self, name: AttrName, value: AttrValue) -> Self {
         self.attrs.retain(|(n, _)| *n != name);
         self.attrs.push((name, value));
+        self
+    }
+
+    /// Sets a URL-bearing attribute.
+    ///
+    /// [`UrlAttr`] and [`AttrName`] are disjoint, so the only way to reach
+    /// `href` or `src` is through an already-parsed [`Url`]. A raw string
+    /// cannot be routed here.
+    #[must_use]
+    pub fn url_attr(mut self, name: UrlAttr, url: Url) -> Self {
+        self.urls.retain(|(n, _)| *n != name);
+        self.urls.push((name, url));
         self
     }
 
@@ -91,6 +108,10 @@ impl Element {
 
     pub fn attrs(&self) -> &[(AttrName, AttrValue)] {
         &self.attrs
+    }
+
+    pub fn urls(&self) -> &[(UrlAttr, Url)] {
+        &self.urls
     }
 
     pub fn classes(&self) -> &[ClassName] {
@@ -190,10 +211,29 @@ impl Tag {
     }
 }
 
+/// The attributes whose value is a URL.
+///
+/// Deliberately disjoint from [`AttrName`]: these are reachable only via
+/// [`Element::url_attr`], which demands a parsed [`Url`], so an unvalidated
+/// string can never land in `href` or `src`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum AttrName {
+pub enum UrlAttr {
     Href,
     Src,
+}
+
+impl UrlAttr {
+    pub fn name(self) -> &'static str {
+        match self {
+            UrlAttr::Href => "href",
+            UrlAttr::Src => "src",
+        }
+    }
+}
+
+/// Attributes that carry a plain value. See [`UrlAttr`] for `href` and `src`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum AttrName {
     Alt,
     Title,
     Target,
@@ -216,8 +256,6 @@ pub enum AttrName {
 impl AttrName {
     pub fn name(self) -> &'static str {
         match self {
-            AttrName::Href => "href",
-            AttrName::Src => "src",
             AttrName::Alt => "alt",
             AttrName::Title => "title",
             AttrName::Target => "target",
@@ -236,10 +274,6 @@ impl AttrName {
             AttrName::Dir => "dir",
             AttrName::Lang => "lang",
         }
-    }
-
-    pub fn is_url(self) -> bool {
-        matches!(self, AttrName::Href | AttrName::Src)
     }
 }
 

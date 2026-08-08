@@ -1,10 +1,16 @@
 [package]
 name = "ferromail"
+description = "Type-safe HTML email component builder for Rust"
+repository = "https://github.com/ffakira/ferromail"
+keywords = ["email", "html", "template"]
+categories = ["email", "template-engine"]
 version = "0.1.0"
 edition = "2024"
+authors = ["ffakira <55924290+ffakira@users.noreply.github.com>"]
 license = "MIT OR Apache-2.0"
 
-[dependencies]
+[dev-dependencies]
+proptest = "1"
 
 [lints.rust]
 unsafe_code = "forbid"
