@@ -19,3 +19,7 @@ renderer turns the tree into HTML.
 Tailwind support is planned behind a `tailwind` feature flag. Utility classes
 resolve to inline styles at build time, with media queries kept in a `<style>`
 block since they can't be inlined.
+
+## License
+
+MIT or Apache-2.0, at your option.
