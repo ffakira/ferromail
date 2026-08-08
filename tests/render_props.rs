@@ -11,6 +11,10 @@ use ferromail::render::render;
 use proptest::prelude::*;
 
 const TAGS: &[Tag] = &[
+    // VML: namespaced, emitted inside conditionals, and the newest markup
+    // path — exactly where the escaping assumptions are least exercised.
+    Tag::VRoundRect,
+    Tag::WAnchorLock,
     Tag::Div,
     Tag::Span,
     Tag::P,
@@ -28,6 +32,11 @@ const ATTR_NAMES: &[AttrName] = &[
     AttrName::Width,
     AttrName::Align,
     AttrName::Bgcolor,
+    AttrName::ArcSize,
+    AttrName::FillColor,
+    AttrName::StrokeColor,
+    AttrName::XmlnsV,
+    AttrName::Charset,
 ];
 
 const URL_ATTRS: &[UrlAttr] = &[UrlAttr::Href, UrlAttr::Src];
@@ -143,8 +152,13 @@ fn tags_in(html: &str) -> Vec<String> {
                 j += 1;
             }
 
+            // ':' belongs to the name: VML tags are namespaced (`v:roundrect`),
+            // and stopping at the colon would both under-report them and let a
+            // smuggled `<v:...>` past this check.
             let mut name = String::new();
-            while j < bytes.len() && (bytes[j].is_ascii_alphanumeric() || bytes[j] == '-') {
+            while j < bytes.len()
+                && (bytes[j].is_ascii_alphanumeric() || bytes[j] == '-' || bytes[j] == ':')
+            {
                 name.push(bytes[j]);
                 j += 1;
             }

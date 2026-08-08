@@ -1,9 +1,8 @@
 # ferromail
 
-[![crates.io](https://img.shields.io/crates/v/ferromail.svg)](https://crates.io/crates/ferrom
-ail)
-[![CI](https://github.com/ffakira/ferromail/actions/workflows/ci.yml/badge.svg)](https://gith
-ub.com/ffakira/ferromail/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/ferromail.svg)](https://crates.io/crates/ferromail)
+[![docs.rs](https://img.shields.io/docsrs/ferromail)](https://docs.rs/ferromail)
+[![CI](https://github.com/ffakira/ferromail/actions/workflows/ci.yml/badge.svg)](https://github.com/ffakira/ferromail/actions/workflows/ci.yml)
 
 Type-safe HTML email component builder for Rust.
 

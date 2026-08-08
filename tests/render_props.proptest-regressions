@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3b3c83b18c35b861a669549dc401fe97e29a5c5d8a64e696ba837ff5c288cde6 # shrinks to node = Element(Element { tag: VRoundRect, attrs: [], urls: [], class: [], styles: StyleMap { decls: [] }, children: [] })

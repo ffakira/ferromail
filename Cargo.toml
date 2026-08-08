@@ -8,9 +8,17 @@ version = "0.0.1"
 edition = "2024"
 authors = ["ffakira <55924290+ffakira@users.noreply.github.com>"]
 license = "MIT OR Apache-2.0"
+exclude = [
+    ".github",
+    "docker-compose.yml",
+    "examples/",
+    "tests/",
+]
 
 [dev-dependencies]
+lettre = { version = "0.11.23", default-features = false, features = ["smtp-transport", "builder"] }
 proptest = "1"
+serde_json = "1.0.151"
 
 [lints.rust]
 unsafe_code = "forbid"

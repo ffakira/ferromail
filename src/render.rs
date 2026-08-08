@@ -86,6 +86,9 @@ fn element_to(el: &Element, out: &mut String) {
         out.push('"');
     }
 
+    // A void tag has no closing tag, so any children it was given are
+    // dropped here. See `Element::child` — this is stated behaviour, not an
+    // oversight, and `void_tag_children_are_dropped` pins it.
     if tag.is_void() {
         out.push_str(" />");
         return;
@@ -186,6 +189,24 @@ mod tests {
 
         // The scheme allowlist is the only door to href, and it is shut.
         assert!(Url::parse("javascript:alert(1)").is_err());
+    }
+
+    /// Deliberate, documented behaviour: a void element has no closing tag,
+    /// so anything `child` put on it is discarded here. Pinned so the choice
+    /// cannot drift into an accident.
+    #[test]
+    fn void_tag_children_are_dropped() {
+        let el = Element::new(Tag::Br).child(Node::Text("dropped".into()));
+        assert_eq!(render(&[Node::Element(el)]), "<br />");
+
+        let el = Element::new(Tag::Img).child(Node::Element(Element::new(Tag::Div)));
+        assert_eq!(render(&[Node::Element(el)]), "<img />");
+
+        // Attributes on a void element still render; only children are lost.
+        let el = Element::new(Tag::Br)
+            .attr(AttrName::Id, AttrValue::Text("x".into()))
+            .child(Node::Text("dropped".into()));
+        assert_eq!(render(&[Node::Element(el)]), r#"<br id="x" />"#);
     }
 
     #[test]
