@@ -1,4 +1,17 @@
+use std::borrow::Cow;
+
 pub struct RawHtml(String);
+
+impl RawHtml {
+    /// Wraps markup that is rendered verbatim, with no escaping.
+    ///
+    /// The caller guarantees the string is well-formed HTML from a trusted
+    /// source. Passing user input here is an injection vulnerability, and
+    /// this is the only place in the crate where that is possible.
+    pub fn trusted(html: impl Into<String>) -> Self {
+        RawHtml(html.into())
+    }
+}
 
 impl RawHtml {
     pub fn as_str(&self) -> &str {
@@ -10,7 +23,31 @@ pub enum Node {
     Element(Element),
     Text(String),
     Raw(RawHtml),
-    Conditional { cond: String, children: Vec<Node> },
+    Conditional {
+        cond: Condition,
+        children: Vec<Node>,
+    },
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Condition {
+    Mso,
+    NotMso,
+    MsoGte(u8),
+}
+
+impl Condition {
+    pub fn expr(self) -> Cow<'static, str> {
+        match self {
+            Condition::Mso => Cow::Borrowed("mso"),
+            Condition::NotMso => Cow::Borrowed("!mso"),
+            Condition::MsoGte(version) => Cow::Owned(format!("gte mso {version}")),
+        }
+    }
+
+    pub fn is_revealed(self) -> bool {
+        matches!(self, Condition::NotMso)
+    }
 }
 
 pub struct Element {
@@ -317,7 +354,7 @@ impl StyleMap {
         self.decls.iter().map(|(p, v)| (p, v.as_str()))
     }
 
-    pub fn fill_ftrom(&mut self, other: &StyleMap) {
+    pub fn fill_from(&mut self, other: &StyleMap) {
         for (prop, value) in &other.decls {
             if self.get(prop).is_none() {
                 self.decls.push((prop.clone(), value.clone()));

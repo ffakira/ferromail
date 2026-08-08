@@ -14,13 +14,25 @@ fn node_to(node: &Node, out: &mut String) {
         Node::Raw(raw) => out.push_str(raw.as_str()),
         Node::Element(el) => element_to(el, out),
         Node::Conditional { cond, children } => {
-            out.push_str("<!--[if ");
-            out.push_str(cond);
-            out.push_str("]>");
+            if cond.is_revealed() {
+                out.push_str("<!--[if ");
+                out.push_str(&cond.expr());
+                out.push_str("]><!-->");
+            } else {
+                out.push_str("<!--[if ");
+                out.push_str(&cond.expr());
+                out.push_str("]>");
+            }
+
             for child in children {
                 node_to(child, out);
             }
-            out.push_str("<![endif]-->");
+
+            if cond.is_revealed() {
+                out.push_str("<!--<![endif]-->");
+            } else {
+                out.push_str("<![endif]-->");
+            }
         }
     }
 }
@@ -87,7 +99,7 @@ fn escape_attr(raw: &str, out: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::markup::Tag;
+    use crate::markup::{Condition, RawHtml, Tag};
 
     #[test]
     fn escape_text() {
@@ -99,5 +111,23 @@ mod tests {
     fn void_tags_have_no_closing_tag() {
         let nodes = vec![Node::Element(Element::new(Tag::Img))];
         assert_eq!(render(&nodes), "<img />");
+    }
+
+    #[test]
+    fn not_mso_is_downlevel_revealed() {
+        let nodes = vec![Node::Conditional {
+            cond: Condition::NotMso,
+            children: vec![Node::Text("everyone else".into())],
+        }];
+        assert_eq!(
+            render(&nodes),
+            "<!--[if !mso]><!-->everyone else<!--<![endif]-->"
+        );
+    }
+
+    #[test]
+    fn raw_is_verbatim() {
+        let nodes = vec![Node::Raw(RawHtml::trusted("<b>hi</b>"))];
+        assert_eq!(render(&nodes), "<b>hi</b>");
     }
 }
