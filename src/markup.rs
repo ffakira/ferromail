@@ -32,17 +32,20 @@ impl Element {
         }
     }
 
+    #[must_use]
     pub fn attr(mut self, name: AttrName, value: AttrValue) -> Self {
         self.attrs.retain(|(n, _)| *n != name);
         self.attrs.push((name, value));
         self
     }
 
+    #[must_use]
     pub fn child(mut self, node: Node) -> Self {
         self.children.push(node);
         self
     }
 
+    #[must_use]
     pub fn text(self, text: impl Into<String>) -> Self {
         self.child(Node::Text(text.into()))
     }
@@ -210,6 +213,20 @@ pub enum UrlError {
 }
 
 impl Url {
+    /// Parses an absolute `http`, `https`, `mailto` or `tel` URL.
+    ///
+    /// Relative URLs are rejeceted, since an email has no base to resolve them against.
+    ///
+    /// # Errors
+    ///
+    /// [`UrlError::Empty`] if the input is blank, [`UrlError::DisallowedScheme`]
+    /// if the scheme is missing or not one of the four above.
+    ///
+    /// ```
+    /// # use ferromail::markup::{Url, UrlError};
+    /// assert!(Url::parse("https://example.com").is_ok());
+    /// assert_eq!(Url::parse("javascript:alert(1)"), Err(UrlError::DisallowedScheme));
+    /// ```
     pub fn parse(raw: &str) -> Result<Self, UrlError> {
         let cleaned: String = raw.chars().filter(|c| !c.is_control()).collect();
 
@@ -223,6 +240,9 @@ impl Url {
             .map(|(s, _)| s.to_ascii_lowercase())
             .ok_or(UrlError::DisallowedScheme)?;
 
+        // Allowlist, not blocklist: blocking javascript: invites vbscript:,
+        // data:text/html, and every future variant. Control chars are stripped
+        // first because a tab inside the scheme gets normalised away by clients.
         match scheme.as_str() {
             "http" | "https" | "mailto" | "tel" => Ok(Url(trimmed.to_owned())),
             _ => Err(UrlError::DisallowedScheme),
