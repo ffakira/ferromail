@@ -12,7 +12,10 @@ pub mod tree;
 pub mod url;
 
 pub use attr::{AttrName, AttrValue, UrlAttr};
-pub use style::{ClassName, Color, Property, StyleMap, StyleValue, StyleValueError};
+pub use style::{
+    ClassName, Color, MediaQuery, Property, Rule, Selector, StyleMap, StyleValue, StyleValueError,
+    Stylesheet,
+};
 pub use tag::Tag;
 pub use tree::{Condition, Element, Node, RawHtml};
 pub use url::{Url, UrlError};

@@ -8,6 +8,7 @@ pub enum Tag {
     Body,
     Meta,
     Title,
+    Style,
 
     // layout
     Table,
@@ -52,6 +53,7 @@ impl Tag {
             Tag::Body => "body",
             Tag::Meta => "meta",
             Tag::Title => "title",
+            Tag::Style => "style",
             Tag::Table => "table",
             Tag::TBody => "tbody",
             Tag::Tr => "tr",

@@ -2,7 +2,9 @@
 
 use std::borrow::Cow;
 
-use super::{AttrName, AttrValue, ClassName, Property, StyleMap, StyleValue, Tag, Url, UrlAttr};
+use super::{
+    AttrName, AttrValue, ClassName, Property, StyleMap, StyleValue, Stylesheet, Tag, Url, UrlAttr,
+};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RawHtml(String);
@@ -27,6 +29,12 @@ pub enum Node {
     Element(Element),
     Text(String),
     Raw(RawHtml),
+    /// A `<style>` block. Its own variant rather than an [`Element`] holding
+    /// text, because CSS is not escaped on the way out — the guarantee that
+    /// nothing can close the block comes from [`Stylesheet`] being typed all
+    /// the way down, and routing it through `Node::Text` would quietly hand
+    /// that job to the escaper instead.
+    Style(Stylesheet),
     Conditional {
         cond: Condition,
         children: Vec<Node>,

@@ -1,6 +1,6 @@
 //! The `<html>` wrapper an email needs before VML will render.
 
-use crate::markup::{AttrName, AttrValue, Element, Node, Tag};
+use crate::markup::{AttrName, AttrValue, Element, Node, Stylesheet, Tag};
 
 /// VML namespaces, required on `<html>` for `v:` and `w:` elements to render
 /// in Outlook's Word engine. Without them the whole VML branch is inert.
@@ -16,6 +16,7 @@ const WORD_NS: &str = "urn:schemas-microsoft-com:office:word";
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Document {
     title: String,
+    stylesheet: Stylesheet,
     children: Vec<Node>,
 }
 
@@ -23,8 +24,20 @@ impl Document {
     pub fn new(title: impl Into<String>) -> Self {
         Self {
             title: title.into(),
+            stylesheet: Stylesheet::new(),
             children: Vec::new(),
         }
+    }
+
+    /// Sets the `<style>` block in the head.
+    ///
+    /// Use it for media queries, and treat it as an enhancement: Gmail's app
+    /// strips `<style>` for non-Gmail accounts and Outlook's Word engine
+    /// ignores media queries, so the inline layout has to stand on its own.
+    #[must_use]
+    pub fn stylesheet(mut self, sheet: Stylesheet) -> Self {
+        self.stylesheet = sheet;
+        self
     }
 
     #[must_use]
@@ -59,7 +72,8 @@ impl Document {
             ))
             .child(Node::Element(
                 Element::new(Tag::Title).text(self.title.clone()),
-            ));
+            ))
+            .child(Node::Style(self.stylesheet.clone()));
 
         let body = self
             .children

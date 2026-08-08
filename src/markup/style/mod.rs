@@ -8,10 +8,12 @@ pub mod class;
 pub mod color;
 pub mod map;
 pub mod property;
+pub mod sheet;
 pub mod value;
 
 pub use class::ClassName;
 pub use color::Color;
 pub use map::StyleMap;
 pub use property::Property;
+pub use sheet::{MediaQuery, Rule, Selector, Stylesheet};
 pub use value::{StyleValue, StyleValueError};

@@ -193,7 +193,7 @@ fn expected_tags(node: &Node, out: &mut Vec<String>) {
                 expected_tags(child, out);
             }
         }
-        Node::Text(_) | Node::Raw(_) => {}
+        Node::Text(_) | Node::Raw(_) | Node::Style(_) => {}
     }
 }
 
@@ -233,7 +233,7 @@ fn expected_quotes(node: &Node) -> usize {
             n * 2 + el.children().iter().map(expected_quotes).sum::<usize>()
         }
         Node::Conditional { children, .. } => children.iter().map(expected_quotes).sum(),
-        Node::Text(_) | Node::Raw(_) => 0,
+        Node::Text(_) | Node::Raw(_) | Node::Style(_) => 0,
     }
 }
 

@@ -13,6 +13,17 @@ fn node_to(node: &Node, out: &mut String) {
         Node::Text(text) => escape_text(text, out),
         Node::Raw(raw) => out.push_str(raw.as_str()),
         Node::Element(el) => element_to(el, out),
+        // Not escaped, and it does not need to be: every part of a Stylesheet
+        // is a ClassName, Property or StyleValue, all of which reject `<` and
+        // `>`, so `</style>` cannot occur. An empty sheet emits nothing rather
+        // than a bare <style></style>.
+        Node::Style(sheet) => {
+            if !sheet.is_empty() {
+                out.push_str("<style>");
+                out.push_str(&sheet.to_css());
+                out.push_str("</style>");
+            }
+        }
         Node::Conditional { cond, children } => {
             if cond.is_revealed() {
                 out.push_str("<!--[if ");
