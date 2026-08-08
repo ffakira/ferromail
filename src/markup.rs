@@ -1,13 +1,16 @@
 pub struct RawHtml(String);
 
+impl RawHtml {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 pub enum Node {
     Element(Element),
     Text(String),
     Raw(RawHtml),
-    Conditional {
-        cond: String,
-        children: Vec<Node>
-    },
+    Conditional { cond: String, children: Vec<Node> },
 }
 
 pub struct Element {
@@ -16,6 +19,59 @@ pub struct Element {
     class: Vec<ClassName>,
     styles: StyleMap,
     children: Vec<Node>,
+}
+
+impl Element {
+    pub fn new(tag: Tag) -> Self {
+        Self {
+            tag,
+            attrs: Vec::new(),
+            class: Vec::new(),
+            styles: StyleMap::new(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn attr(mut self, name: AttrName, value: AttrValue) -> Self {
+        self.attrs.retain(|(n, _)| *n != name);
+        self.attrs.push((name, value));
+        self
+    }
+
+    pub fn child(mut self, node: Node) -> Self {
+        self.children.push(node);
+        self
+    }
+
+    pub fn text(self, text: impl Into<String>) -> Self {
+        self.child(Node::Text(text.into()))
+    }
+
+    pub fn tag(&self) -> Tag {
+        self.tag
+    }
+
+    pub fn attrs(&self) -> &[(AttrName, AttrValue)] {
+        &self.attrs
+    }
+
+    pub fn class(&self) -> &[ClassName] {
+        &self.class
+    }
+
+    pub fn styles(&self) -> &StyleMap {
+        &self.styles
+    }
+
+    pub fn children(&self) -> &[Node] {
+        &self.children
+    }
+}
+
+impl From<Element> for Node {
+    fn from(el: Element) -> Self {
+        Node::Element(el)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -201,9 +257,7 @@ pub struct Property(String);
 impl Property {
     pub fn new(raw: &str) -> Option<Self> {
         let ok = !raw.is_empty()
-            && raw
-                .chars()
-                .all(|c| c.is_ascii_alphabetic() || c == '-')
+            && raw.chars().all(|c| c.is_ascii_alphabetic() || c == '-')
             && !raw.starts_with('-');
 
         ok.then(|| Property(raw.to_ascii_lowercase()))
@@ -216,7 +270,7 @@ impl Property {
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct StyleMap {
-    decls: Vec<(Property, String)>
+    decls: Vec<(Property, String)>,
 }
 
 impl StyleMap {
