@@ -16,8 +16,30 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
-  check:
-    name: fmt, clippy, test
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Report every platform. Without this, the first failure cancels the
+      # others and hides whether the break is platform-specific or general.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --all-features --locked
+
+  # fmt and clippy run once, not per platform. Lint results do not vary by OS
+  # here, and `cargo fmt --check` on Windows is a known source of spurious
+  # line-ending failures.
+  lint:
+    name: fmt, clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,5 +56,27 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
-      - name: Test
-        run: cargo test --all-features --locked
+  # Proves `rust-version` in Cargo.toml rather than trusting it.
+  #
+  # --lib on purpose. rust-version is a promise to consumers, and a consumer
+  # compiles the library and nothing else: ferromail has no runtime
+  # dependencies. --all-targets would drag in dev-dependencies, where lettre
+  # reaches idna and the icu_* crates that need 1.86, and the job would fail
+  # for a reason no consumer can ever hit.
+  #
+  # cargo check only: pointing a floor-version clippy at current code proves
+  # nothing useful, and -D warnings there fails on lints that have since moved.
+  msrv:
+    name: msrv 1.85
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.85.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check
+        run: cargo check --lib --locked
