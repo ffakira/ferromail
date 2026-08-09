@@ -3,9 +3,11 @@
 use crate::markup::{Element, Property, StyleValue};
 
 pub mod button;
+pub mod container;
 pub mod document;
 
 pub use button::Button;
+pub use container::Container;
 pub use document::Document;
 
 /// Interns a property name written as a literal in this crate.
