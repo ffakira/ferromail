@@ -10,6 +10,7 @@ pub mod style;
 pub mod tag;
 pub mod tree;
 pub mod url;
+pub mod var;
 
 pub use attr::{AttrName, AttrValue, UrlAttr};
 pub use style::{
@@ -19,3 +20,4 @@ pub use style::{
 pub use tag::Tag;
 pub use tree::{Condition, Element, Node, RawHtml};
 pub use url::{Url, UrlError};
+pub use var::VarName;

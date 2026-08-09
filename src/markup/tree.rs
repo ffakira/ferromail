@@ -4,6 +4,7 @@ use std::borrow::Cow;
 
 use super::{
     AttrName, AttrValue, ClassName, Property, StyleMap, StyleValue, Stylesheet, Tag, Url, UrlAttr,
+    VarName,
 };
 
 /// Markup that is rendered verbatim.
@@ -40,6 +41,11 @@ pub enum Node {
     /// an element. A variant rather than [`RawHtml`] so it carries no string a
     /// caller could have supplied.
     Doctype,
+    /// A named hole, filled by
+    /// [`render_with`](crate::render::render_with). The substituted value is
+    /// escaped exactly as [`Node::Text`] would be, so a placeholder is not a
+    /// way around the escaper.
+    Var(VarName),
     /// A `<style>` block. Its own variant rather than an [`Element`] holding
     /// text, because CSS is not escaped on the way out. The guarantee that
     /// nothing can close the block comes from [`Stylesheet`] being typed all

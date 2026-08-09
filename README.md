@@ -16,10 +16,16 @@ No runtime dependencies. Requires Rust 1.85.
 
 Proof of concept, and the API will change.
 
-What works today: the markup tree and renderer, a `Document` wrapper that
-declares the VML namespaces, a bulletproof `Button` with a VML branch for
-Outlook and a table fallback for everyone else, a typed `Stylesheet` for media
-queries, and the `html!` macro.
+What works today: the markup tree and renderer, the `html!` macro, a typed
+`Stylesheet` for media queries, placeholders filled at render time, and five
+components. `Document` emits the doctype and declares the VML namespaces,
+`Container` is a centered fluid column, `Row` and `Column` lay out side by
+side and stack on mobile, and `Button` has a VML branch for Outlook with a
+table fallback for everyone else.
+
+Missing before the component set is complete: `Text`, `Divider`, `Image` and
+a preheader. Text in particular is unstyled today, so clients apply their own
+defaults.
 
 What is not established: **none of the output has been checked in a real email
 client.** The generated client-support report scores the markup against the
@@ -32,34 +38,31 @@ The version published on crates.io predates most of the above.
 ## Example
 
 ```rust
-use ferromail::components::{Button, Document};
+use ferromail::components::{Button, Container, Document, Row};
 use ferromail::html;
-use ferromail::markup::{Color, Url};
-use ferromail::render::render;
+use ferromail::markup::{Color, Url, VarName};
+use ferromail::render::{render_with, Bindings};
 
 let order = Url::parse("https://example.com/orders/42?ref=a&b=2").expect("valid");
 
-let body = html! {
-    table role=("presentation") width=("100%") {
-        tr {
-            td align=("center") {
-                h1 { "Thanks for your order" }
-                p { "We will email you when it ships." }
-            }
-        }
-    }
-};
-
-let button = Button::new(order, "View order")
-    .background(Color::hex("#2563eb").expect("valid"))
+let body = Container::new()
+    .background(Color::hex("#f4f4f5").expect("valid"))
+    .children(html! {
+        @(Row::single(html! {
+            h1 { "Thanks, " {{ name }} }
+            p { "We will email you when it ships." }
+        }).build())
+        @[Button::new(order, "View order")
+            .background(Color::hex("#2563eb").expect("valid"))
+            .build()]
+    })
     .build();
 
-let doc = Document::new("Thanks for your order")
-    .children(body)
-    .children(button)
-    .build();
+let doc = Document::new("Thanks for your order").child(body).build();
 
-println!("{}", render(&doc));
+let vars = Bindings::new().set(VarName::new("name").expect("valid"), "Ada & co");
+
+println!("{}", render_with(&doc, &vars).expect("every name bound"));
 ```
 
 Text is escaped on the way out, so `"View order <script>"` renders as
@@ -78,6 +81,9 @@ not already allow.
 | `name=(expr)` | an attribute, parentheses always required |
 | `"literal"` | escaped text |
 | `(expr)` | escaped text from anything `Into<String>` |
+| `{{ name }}` | a placeholder, filled by `render_with` |
+| `@(expr)` | splices one node, so a component composes into a tree |
+| `@[expr]` | splices many, which is what `Button::build` and `Document::build` return |
 
 ```rust
 use ferromail::html;
@@ -97,6 +103,22 @@ let nodes = html! {
 Attributes route by name. `href` and `src` go to `url_attr` and take a parsed
 `Url`, `class` takes a `ClassName`, and everything else becomes an `AttrValue`
 and is escaped on render.
+
+Placeholders are substituted inside the escaping path, so a binding holding
+markup becomes text rather than markup. They work in text positions only:
+`href` and `style` values are validated when they are built, and a hole would
+defeat that.
+
+```rust
+use ferromail::html;
+use ferromail::markup::VarName;
+use ferromail::render::{render_with, Bindings};
+
+let nodes = html! { p { "Hi, " {{ name }} } };
+let vars = Bindings::new().set(VarName::new("name").expect("valid"), "Ada & co");
+
+assert_eq!(render_with(&nodes, &vars).expect("bound"), "<p>Hi, Ada &amp; co</p>");
+```
 
 The tag and attribute tables are closed, so a name outside them is a compile
 error that says which one and what to do about it, rather than a macro matcher
@@ -126,6 +148,10 @@ in the type rather than in a convention the caller has to remember:
   from inside a `<style>` block.
 - `RawHtml::trusted` is the single unescaped entry point, and it is named so it
   shows up in review.
+- Placeholder values are substituted inside the escaping path, so `{{ name }}`
+  holding `<script>` becomes text. A placeholder is not a hole in the escaper,
+  which is why they exist only in text positions: `href` and `style` values are
+  validated when built, and a hole would defeat that.
 
 Outlook conditional comments are typed rather than strings, so `!mso` emits the
 downlevel-revealed syntax instead of silently hiding its content.
@@ -135,10 +161,12 @@ opens no path the API does not already allow.
 
 ## Not done yet
 
-Tailwind-style utilities, more components, and a fluid container. Media queries
-exist but are an enhancement: Gmail's app strips `<style>` for non-Gmail
-accounts and Outlook ignores media queries, so the inline layout still has to
-stand on its own.
+`Text`, `Divider`, `Image` and a preheader, then Tailwind-style utilities.
+
+Media queries exist but are an enhancement: Gmail's app strips `<style>` for
+non-Gmail accounts and Outlook ignores media queries, so `Row::stack` does
+nothing there and the columns stay side by side. The fluid layout has to stand
+on its own, which is what `Container` is for.
 
 ## Development
 

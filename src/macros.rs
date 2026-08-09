@@ -39,6 +39,14 @@
 //! - `name=(expr)` is an attribute; the parentheses are always required
 //! - `"literal"` is escaped text
 //! - `(expr)` is escaped text from a value that is `Into<String>`
+//! - `{{ name }}` is a placeholder, filled by
+//!   [`render_with`](crate::render::render_with)
+//! - `@(expr)` splices one node, so a component composes into a tree
+//! - `@[expr]` splices many, which is what [`Button::build`] and
+//!   [`Document::build`] return
+//!
+//! [`Button::build`]: crate::components::Button::build
+//! [`Document::build`]: crate::components::Document::build
 //!
 //! # What it refuses
 //!
@@ -107,6 +115,33 @@ macro_rules! __html_nodes {
     ($nodes:ident; ($text:expr) $($rest:tt)*) => {
         $nodes.push($crate::markup::Node::Text(
             ::std::convert::Into::into($text),
+        ));
+        $crate::__html_nodes!($nodes; $($rest)*);
+    };
+
+    // @(expr) splices one node, so a component drops into a tree.
+    ($nodes:ident; @ ( $node:expr ) $($rest:tt)*) => {
+        $nodes.push(::std::convert::Into::<$crate::markup::Node>::into($node));
+        $crate::__html_nodes!($nodes; $($rest)*);
+    };
+
+    // @[expr] splices many, which is what Button::build and Document::build
+    // return.
+    ($nodes:ident; @ [ $nodes_expr:expr ] $($rest:tt)*) => {
+        ::std::iter::Extend::extend(
+            $nodes,
+            ::std::iter::IntoIterator::into_iter($nodes_expr),
+        );
+        $crate::__html_nodes!($nodes; $($rest)*);
+    };
+
+    // {{ name }} is a placeholder, filled by render_with. A Rust identifier is
+    // always a valid VarName, so the expect cannot fire for anything the
+    // macro will accept.
+    ($nodes:ident; { { $name:ident } } $($rest:tt)*) => {
+        $nodes.push($crate::markup::Node::Var(
+            $crate::markup::VarName::new(::std::stringify!($name))
+                .expect("a Rust identifier is a valid VarName"),
         ));
         $crate::__html_nodes!($nodes; $($rest)*);
     };
@@ -352,7 +387,7 @@ macro_rules! __html_attr_name {
 
 #[cfg(test)]
 mod tests {
-    use crate::markup::ClassName;
+    use crate::markup::{ClassName, Element, Tag};
     use crate::render::render;
 
     fn url() -> crate::markup::Url {
@@ -418,6 +453,68 @@ mod tests {
         };
 
         assert_eq!(render(&nodes), r#"<td class="stack">x</td>"#);
+    }
+
+    #[test]
+    fn a_component_splices_into_a_tree() {
+        use crate::components::{Button, Container};
+        use crate::markup::Color;
+
+        // Container::build returns one node, Button::build returns several.
+        let container = Container::new().padding_x(0).padding_y(0).build();
+        let button = Button::new(url(), "View order")
+            .background(Color::hex("#2563eb").expect("valid"))
+            .build();
+
+        let nodes = html! {
+            div {
+                @(container)
+                p { "then" }
+                @[button]
+            }
+        };
+
+        let html = render(&nodes);
+        assert!(html.starts_with("<div><table"), "{html}");
+        assert!(html.contains("<p>then</p>"), "{html}");
+        assert!(html.contains("<!--[if mso]>"), "{html}");
+        assert!(html.ends_with("</div>"), "{html}");
+    }
+
+    #[test]
+    fn an_element_splices_without_wrapping_it_first() {
+        let el = Element::new(Tag::Strong).text("bold");
+        let nodes = html! { p { "a " @(el) } };
+
+        assert_eq!(render(&nodes), "<p>a <strong>bold</strong></p>");
+    }
+
+    #[test]
+    fn placeholders_are_filled_by_render_with() {
+        use crate::markup::VarName;
+        use crate::render::{Bindings, render_with};
+
+        let nodes = html! {
+            p { "Hi, " {{ name }} ", order " {{ order_id }} }
+        };
+
+        let name = VarName::new("name").expect("valid");
+        let order = VarName::new("order_id").expect("valid");
+
+        let vars = Bindings::new()
+            .set(name, "Ada & <Lovelace>")
+            .set(order, "42");
+
+        assert_eq!(
+            render_with(&nodes, &vars).expect("bound"),
+            "<p>Hi, Ada &amp; &lt;Lovelace&gt;, order 42</p>"
+        );
+    }
+
+    #[test]
+    fn an_unfilled_placeholder_is_visible_in_the_output() {
+        let nodes = html! { p { "Hi, " {{ name }} } };
+        assert_eq!(render(&nodes), "<p>Hi, {{name}}</p>");
     }
 
     /// The macro is syntax only. A hostile string reaching an attribute or a

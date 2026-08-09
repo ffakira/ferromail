@@ -4,7 +4,41 @@
 //! output. Everything it emits verbatim is safe because of the type it came
 //! from, not because of a check performed here. See [`render`].
 
-use crate::markup::{AttrValue, Element, Node};
+use std::collections::HashMap;
+
+use crate::markup::{AttrValue, Element, Node, VarName};
+
+/// Values for the [`Node::Var`] holes in a tree.
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
+pub struct Bindings {
+    values: HashMap<VarName, String>,
+}
+
+impl Bindings {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The value is an ordinary string. It is escaped when substituted, so it
+    /// can hold anything a recipient's name can hold.
+    #[must_use]
+    pub fn set(mut self, name: VarName, value: impl Into<String>) -> Self {
+        self.values.insert(name, value.into());
+        self
+    }
+
+    pub fn get(&self, name: &VarName) -> Option<&str> {
+        self.values.get(name).map(String::as_str)
+    }
+}
+
+/// Why [`render_with`] refused to render.
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
+pub enum RenderError {
+    /// Every unbound name, not just the first, so one pass finds them all.
+    MissingVars(Vec<VarName>),
+}
 
 /// Serialises a node tree to HTML.
 ///
@@ -50,17 +84,65 @@ use crate::markup::{AttrValue, Element, Node};
 /// [`Element::child`](crate::markup::Element::child).
 pub fn render(nodes: &[Node]) -> String {
     let mut out = String::new();
+    let mut missing = Vec::new();
     for node in nodes {
-        node_to(node, &mut out);
+        node_to(node, &Fill::Verbatim, &mut missing, &mut out);
     }
     out
 }
 
-fn node_to(node: &Node, out: &mut String) {
+/// Renders a tree, substituting every [`Node::Var`] from `vars`.
+///
+/// Values are escaped as they are substituted, so a binding holding
+/// `<script>` becomes text and not markup.
+///
+/// # Errors
+///
+/// [`RenderError::MissingVars`] listing every unbound name. Rendering a
+/// partly filled email is worse than not rendering one, and reporting all of
+/// them at once beats fixing them one per run.
+pub fn render_with(nodes: &[Node], vars: &Bindings) -> Result<String, RenderError> {
+    let mut out = String::new();
+    let mut missing = Vec::new();
+
+    for node in nodes {
+        node_to(node, &Fill::Bound(vars), &mut missing, &mut out);
+    }
+
+    if missing.is_empty() {
+        Ok(out)
+    } else {
+        missing.dedup();
+        Err(RenderError::MissingVars(missing))
+    }
+}
+
+/// How a [`Node::Var`] is resolved on this pass.
+enum Fill<'a> {
+    /// No bindings: write the name back so an unfilled tree is visibly wrong
+    /// rather than silently missing its content.
+    Verbatim,
+    Bound(&'a Bindings),
+}
+
+fn node_to(node: &Node, fill: &Fill, missing: &mut Vec<VarName>, out: &mut String) {
     match node {
         Node::Text(text) => escape_text(text, out),
+        // Escaped on the way out, exactly like Node::Text. A placeholder is
+        // not a way around the escaper.
+        Node::Var(name) => match fill {
+            Fill::Verbatim => {
+                out.push_str("{{");
+                out.push_str(name.as_str());
+                out.push_str("}}");
+            }
+            Fill::Bound(vars) => match vars.get(name) {
+                Some(value) => escape_text(value, out),
+                None => missing.push(name.clone()),
+            },
+        },
         Node::Raw(raw) => out.push_str(raw.as_str()),
-        Node::Element(el) => element_to(el, out),
+        Node::Element(el) => element_to(el, fill, missing, out),
         // XHTML 1.0 Transitional rather than the HTML5 one, because the
         // renderer closes void elements as `<img />`, which this doctype
         // requires and HTML5 merely tolerates.
@@ -91,7 +173,7 @@ fn node_to(node: &Node, out: &mut String) {
             }
 
             for child in children {
-                node_to(child, out);
+                node_to(child, fill, missing, out);
             }
 
             if cond.is_revealed() {
@@ -103,7 +185,7 @@ fn node_to(node: &Node, out: &mut String) {
     }
 }
 
-fn element_to(el: &Element, out: &mut String) {
+fn element_to(el: &Element, fill: &Fill, missing: &mut Vec<VarName>, out: &mut String) {
     let tag = el.tag();
 
     out.push('<');
@@ -162,7 +244,7 @@ fn element_to(el: &Element, out: &mut String) {
 
     out.push('>');
     for child in el.children() {
-        node_to(child, out);
+        node_to(child, fill, missing, out);
     }
 
     out.push_str("</");
@@ -204,7 +286,7 @@ fn escape_attr(raw: &str, out: &mut String) {
 mod tests {
     use super::*;
     use crate::markup::{
-        AttrName, ClassName, Condition, Property, RawHtml, StyleValue, Tag, Url, UrlAttr,
+        AttrName, ClassName, Condition, Property, RawHtml, StyleValue, Tag, Url, UrlAttr, VarName,
     };
 
     #[test]
@@ -273,6 +355,61 @@ mod tests {
             .attr(AttrName::Id, AttrValue::Text("x".into()))
             .child(Node::Text("dropped".into()));
         assert_eq!(render(&[Node::Element(el)]), r#"<br id="x" />"#);
+    }
+
+    fn var(name: &str) -> VarName {
+        VarName::new(name).expect("valid")
+    }
+
+    /// The whole point: a placeholder is filled inside the escaping path, so a
+    /// binding cannot become markup.
+    #[test]
+    fn a_hostile_binding_is_escaped_not_injected() {
+        let tree = [Node::Element(
+            Element::new(Tag::P).child(Node::Var(var("name"))),
+        )];
+        let vars = Bindings::new().set(var("name"), "Ada <script>alert(1)</script> & co");
+
+        assert_eq!(
+            render_with(&tree, &vars).expect("bound"),
+            "<p>Ada &lt;script&gt;alert(1)&lt;/script&gt; &amp; co</p>"
+        );
+    }
+
+    #[test]
+    fn every_missing_name_is_reported_at_once() {
+        let tree = [
+            Node::Var(var("first")),
+            Node::Var(var("second")),
+            Node::Var(var("first")),
+        ];
+
+        let err = render_with(&tree, &Bindings::new()).expect_err("unbound");
+        assert_eq!(
+            err,
+            RenderError::MissingVars(vec![var("first"), var("second"), var("first")])
+        );
+    }
+
+    /// Rendering without bindings writes the name back, so an unfilled email
+    /// is visibly wrong rather than silently missing its content.
+    #[test]
+    fn an_unfilled_tree_shows_its_placeholders() {
+        let tree = [Node::Element(
+            Element::new(Tag::P).child(Node::Var(var("name"))),
+        )];
+
+        assert_eq!(render(&tree), "<p>{{name}}</p>");
+    }
+
+    #[test]
+    fn var_names_reject_anything_that_could_be_markup() {
+        assert!(VarName::new("first_name").is_some());
+        assert!(VarName::new("order2").is_some());
+        assert!(VarName::new("").is_none());
+        assert!(VarName::new("a b").is_none());
+        assert!(VarName::new("</p><script>").is_none());
+        assert!(VarName::new("a-b").is_none());
     }
 
     #[test]
