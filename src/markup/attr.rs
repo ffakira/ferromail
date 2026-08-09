@@ -99,3 +99,31 @@ pub enum AttrValue {
     Int(u32),
     Url(Url),
 }
+
+// Conversions exist so `html!` can accept `align=("center")` and
+// `border=(0)` without the caller naming the variant. Text is still escaped
+// on render, so these are ergonomic only: they open no new path.
+
+impl From<&str> for AttrValue {
+    fn from(text: &str) -> Self {
+        AttrValue::Text(text.to_owned())
+    }
+}
+
+impl From<String> for AttrValue {
+    fn from(text: String) -> Self {
+        AttrValue::Text(text)
+    }
+}
+
+impl From<u32> for AttrValue {
+    fn from(n: u32) -> Self {
+        AttrValue::Int(n)
+    }
+}
+
+impl From<Url> for AttrValue {
+    fn from(url: Url) -> Self {
+        AttrValue::Url(url)
+    }
+}

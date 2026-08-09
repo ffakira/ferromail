@@ -21,7 +21,7 @@
 //!
 //! `html-check` parses the DOM, and a downlevel-hidden conditional comment
 //! (`<!--[if mso]> ... <![endif]-->`) is just a comment to a parser. So the
-//! VML branch — the entire reason the Outlook path exists — is **never
+//! VML branch (the entire reason the Outlook path exists) is **never
 //! analysed**, and any "Outlook: partial" verdict you see refers to the
 //! `!mso` fallback that Outlook never renders. Treat this report as evidence
 //! about non-Outlook clients only. Outlook still needs Litmus or a real client.
@@ -223,9 +223,9 @@ fn markdown(reports: &[Report]) -> String {
         if r.failures.is_empty() {
             continue;
         }
-        writeln!(out, "\n## {} — unsupported\n", r.name).expect("infallible");
+        writeln!(out, "\n## {}: unsupported\n", r.name).expect("infallible");
         for (feature, clients) in &r.failures {
-            writeln!(out, "- **{}** — {}", feature, clients.join(", ")).expect("infallible");
+            writeln!(out, "- **{}**: {}", feature, clients.join(", ")).expect("infallible");
         }
     }
 

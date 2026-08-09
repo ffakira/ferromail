@@ -98,7 +98,7 @@ fn element_to(el: &Element, out: &mut String) {
     }
 
     // A void tag has no closing tag, so any children it was given are
-    // dropped here. See `Element::child` — this is stated behaviour, not an
+    // dropped here. See `Element::child`. This is stated behaviour, not an
     // oversight, and `void_tag_children_are_dropped` pins it.
     if tag.is_void() {
         out.push_str(" />");

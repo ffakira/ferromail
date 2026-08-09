@@ -5,7 +5,7 @@
 //! to avoid emitting. So nothing here takes a string: selectors are
 //! [`ClassName`], properties are [`Property`], values are [`StyleValue`], and
 //! the braces, colons and `@media` come from the renderer. `</style>` is
-//! therefore unrepresentable — every component type already rejects `<` and
+//! therefore unrepresentable, because every component type already rejects `<` and
 //! `>`.
 //!
 //! # Media queries are an enhancement, not the mechanism

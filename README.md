@@ -10,49 +10,103 @@ Email HTML is its own dialect: table layouts, inline styles, Outlook conditional
 comments. ferromail builds a markup tree you can't accidentally break, then
 renders it to something mail clients actually display.
 
-No runtime dependencies.
+No runtime dependencies. Requires Rust 1.85.
 
 ## Status
 
-Proof of concept. The markup tree and renderer work and are property tested, but
-there are no components yet and no document scaffolding, so this is not useful
-for sending real email. The API will change.
+Proof of concept, and the API will change.
+
+What works today: the markup tree and renderer, a `Document` wrapper that
+declares the VML namespaces, a bulletproof `Button` with a VML branch for
+Outlook and a table fallback for everyone else, a typed `Stylesheet` for media
+queries, and the `html!` macro.
+
+What is not established: **none of the output has been checked in a real email
+client.** The generated client-support report scores the markup against the
+caniemail dataset, but conditional comments are invisible to that check, so the
+Outlook path in particular rests on reasoning rather than evidence. Treat the
+Outlook support as untested.
+
+The version published on crates.io predates most of the above.
 
 ## Example
 
 ```rust
-use ferromail::markup::{Element, Node, Property, StyleValue, Tag, Url, UrlAttr};
+use ferromail::components::{Button, Document};
+use ferromail::html;
+use ferromail::markup::{Color, Url};
 use ferromail::render::render;
 
-let button = Element::new(Tag::Td)
-    .style(Property::new("background").unwrap(), StyleValue::parse("#2563eb").unwrap())
-    .child(Node::Element(
-        Element::new(Tag::A)
-            .url_attr(UrlAttr::Href, Url::parse("https://example.com").unwrap())
-            .text("View order <script>")
-    ));
+let order = Url::parse("https://example.com/orders/42?ref=a&b=2").expect("valid");
 
-println!("{}", render(&[Node::Element(button)]));
+let body = html! {
+    table role=("presentation") width=("100%") {
+        tr {
+            td align=("center") {
+                h1 { "Thanks for your order" }
+                p { "We will email you when it ships." }
+            }
+        }
+    }
+};
 
-<td style="background:#2563eb"><a href="https://example.com">View order
-&lt;script&gt;
+let button = Button::new(order, "View order")
+    .background(Color::hex("#2563eb").expect("valid"))
+    .build();
+
+let doc = Document::new("Thanks for your order")
+    .children(body)
+    .children(button)
+    .build();
+
+println!("{}", render(&[doc]));
 ```
 
-**What is enforced**
+Text is escaped on the way out, so `"View order <script>"` renders as
+`View order &lt;script&gt;` rather than markup.
 
-Untrusted strings cannot become markup. Text is escaped on render, and every
-value that reaches an attribute goes through a type that rejects anything able
-to close it:
+## What is enforced
 
-- `Url` accepts `http`, `https`, `mailto` and `tel` only, so `javascript:` has no path into `href` or `src`
-- `StyleValue` rejects CSS functions, comments and backslash escapes, so `expression()` and its encoded variants cannot appear in a `style` attribute
-- `RawHtml::trusted` is the single unescaped entry point, and it is named so it shows up in review
+Untrusted strings cannot become markup. Every value that reaches an attribute
+goes through a type that rejects anything able to close it, and the checks live
+in the type rather than in a convention the caller has to remember:
 
-Outlook conditional comments are typed rather than strings, so `!mso` emits the downlevel-revealed syntax instead of silently hiding its content.
+- `Url` accepts `http`, `https`, `mailto` and `tel` only. There is no
+  `AttrName::Href`, so the only route to `href` and `src` is `url_attr`, which
+  demands a parsed `Url`. `javascript:` has no path in.
+- `StyleValue` rejects CSS functions, comments and backslash escapes, so
+  `expression()` and its encoded variants cannot appear in a `style` attribute.
+- `Color::hex` is the only way to build a colour, which is what lets
+  `Button::build` return nodes instead of a `Result`.
+- `Stylesheet` is typed down to the selector, so `</style>` cannot be written
+  from inside a `<style>` block.
+- `RawHtml::trusted` is the single unescaped entry point, and it is named so it
+  shows up in review.
 
-**Not done yet**
+Outlook conditional comments are typed rather than strings, so `!mso` emits the
+downlevel-revealed syntax instead of silently hiding its content.
 
-Components, document scaffolding (doctype, head, media queries), and Tailwind behind a feature flag.
+The `html!` macro is syntax only. It expands to the same builder calls, so it
+opens no path the API does not already allow.
+
+## Not done yet
+
+Tailwind-style utilities, more components, and a fluid container. Media queries
+exist but are an enhancement: Gmail's app strips `<style>` for non-Gmail
+accounts and Outlook ignores media queries, so the inline layout still has to
+stand on its own.
+
+## Development
+
+```sh
+cargo test
+docker compose up -d                                       # local SMTP catcher
+cargo run --example send                                   # preview at :8025
+cargo test --test client_support -- --ignored --nocapture  # client-support report
+```
+
+See [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for why the crate is shaped this
+way.
 
 ## License
 

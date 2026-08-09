@@ -9,7 +9,7 @@
 //!
 //! What this proves: that the rendered HTML survives real MIME assembly and
 //! quoted-printable encoding. `render` emits no newlines, so a whole document
-//! is one very long line, and SMTP caps lines at 1000 characters — the encoder
+//! is one very long line, and SMTP caps lines at 1000 characters, so the encoder
 //! has to fold it. That is the failure this loop is here to catch.
 //!
 //! What it does NOT prove: how Outlook renders anything. Mailpit's viewer is a
@@ -83,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
 
     match mailer.send(&email) {
-        Ok(_) => println!("sent to {SMTP}:{SMTP_PORT} — open http://localhost:8025"),
+        Ok(_) => println!("sent to {SMTP}:{SMTP_PORT}, open http://localhost:8025"),
         Err(e) => {
             eprintln!("could not send to {SMTP}:{SMTP_PORT}: {e}");
             eprintln!("is mailpit running? docker compose up -d");

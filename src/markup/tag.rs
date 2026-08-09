@@ -83,7 +83,7 @@ impl Tag {
 
     /// Whether the tag renders as `<x />` with no closing tag.
     ///
-    /// Children of a void element are dropped when rendered — see
+    /// Children of a void element are dropped when rendered. See
     /// [`Element::child`](super::Element::child).
     pub fn is_void(self) -> bool {
         matches!(self, Tag::Br | Tag::Img | Tag::Meta | Tag::WAnchorLock)

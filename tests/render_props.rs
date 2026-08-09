@@ -12,7 +12,7 @@ use proptest::prelude::*;
 
 const TAGS: &[Tag] = &[
     // VML: namespaced, emitted inside conditionals, and the newest markup
-    // path — exactly where the escaping assumptions are least exercised.
+    // path, exactly where the escaping assumptions are least exercised.
     Tag::VRoundRect,
     Tag::WAnchorLock,
     Tag::Div,

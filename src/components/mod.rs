@@ -13,7 +13,7 @@ pub use document::Document;
 /// # Panics
 ///
 /// If `name` is not a valid property. These are `pub(crate)` helpers called
-/// only with literals, so a panic is a typo caught by our own tests — no
+/// only with literals, so a panic is a typo caught by our own tests. No
 /// consumer input can reach it.
 pub(crate) fn prop(name: &str) -> Property {
     Property::new(name).expect("valid property literal")

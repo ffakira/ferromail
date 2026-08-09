@@ -30,7 +30,7 @@ pub enum Node {
     Text(String),
     Raw(RawHtml),
     /// A `<style>` block. Its own variant rather than an [`Element`] holding
-    /// text, because CSS is not escaped on the way out — the guarantee that
+    /// text, because CSS is not escaped on the way out. The guarantee that
     /// nothing can close the block comes from [`Stylesheet`] being typed all
     /// the way down, and routing it through `Node::Text` would quietly hand
     /// that job to the escaper instead.
@@ -111,7 +111,7 @@ impl Element {
     /// `Element::new(Tag::Br).child(..)` renders as plain `<br />`.
     ///
     /// Making that unrepresentable needs the void-ness in the element's own
-    /// type — a second type or a typestate parameter, which would leak
+    /// type: a second type or a typestate parameter, which would leak
     /// through `Node`, the renderer and every component. That is not worth it
     /// for a mistake whose symptom is visibly missing content. Revisit if it
     /// ever bites in practice.
