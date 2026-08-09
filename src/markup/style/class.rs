@@ -1,5 +1,10 @@
 //! HTML `class` attribute tokens.
 
+/// A single token for the `class` attribute.
+///
+/// Rejects whitespace, control characters, quotes and angle brackets, so a
+/// class cannot close the attribute it sits in. That is why the renderer
+/// writes class names without escaping them.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClassName(String);
 

@@ -2,9 +2,15 @@
 
 use crate::markup::Url;
 
+/// A declaration value that cannot escape the `style` attribute.
+///
+/// Built by [`StyleValue::parse`] or [`StyleValue::url`], which are the only
+/// constructors. Deliberately stricter than CSS: no functions, no comments,
+/// no backslash escapes. See the module documentation for why.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct StyleValue(String);
 
+/// Why [`StyleValue::parse`] refused a string.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[non_exhaustive]
 pub enum StyleValueError {

@@ -1,5 +1,9 @@
 //! CSS property names.
 
+/// A CSS property name, lowercased.
+///
+/// ASCII letters and hyphens only, and it may not start with a hyphen, which
+/// rules out vendor prefixes such as `-webkit-text-size-adjust`.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Property(String);
 

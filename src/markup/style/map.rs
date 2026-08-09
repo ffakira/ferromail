@@ -2,6 +2,11 @@
 
 use super::{Property, StyleValue};
 
+/// Declarations for one element, at most one per property.
+///
+/// Insertion order is preserved, and setting a property that is already
+/// present overwrites it in place rather than appending, so the rendered
+/// order stays stable.
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct StyleMap {
     decls: Vec<(Property, StyleValue)>,
