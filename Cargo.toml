@@ -4,7 +4,7 @@ description = "Type-safe HTML email component builder for Rust"
 repository = "https://github.com/ffakira/ferromail"
 keywords = ["email", "html", "template"]
 categories = ["email", "template-engine"]
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 authors = ["ffakira <55924290+ffakira@users.noreply.github.com>"]
 license = "MIT OR Apache-2.0"
@@ -13,7 +13,7 @@ exclude = [
     "docker-compose.yml",
     "examples/",
     "tests/",
-    "docs",
+    "docs/",
 ]
 rust-version = "1.85"
 
@@ -24,7 +24,6 @@ serde_json = "1.0.151"
 
 [lints.rust]
 unsafe_code = "forbid"
-# TODO: back to "warn" before publishing
 missing_docs = "allow"
 
 [lints.clippy]
