@@ -1,0 +1,10 @@
+# Keep LF in the working tree on every platform.
+#
+# Without this, a Windows checkout converts source to CRLF, and a raw string
+# literal spanning lines then carries \r\n. Tests that assert on exact rendered
+# output would fail on Windows only, for a reason that has nothing to do with
+# the code.
+* text=auto eol=lf
+
+Cargo.lock linguist-generated=true
+*.proptest-regressions linguist-generated=true

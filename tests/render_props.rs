@@ -11,6 +11,10 @@ use ferromail::render::render;
 use proptest::prelude::*;
 
 const TAGS: &[Tag] = &[
+    // VML: namespaced, emitted inside conditionals, and the newest markup
+    // path, exactly where the escaping assumptions are least exercised.
+    Tag::VRoundRect,
+    Tag::WAnchorLock,
     Tag::Div,
     Tag::Span,
     Tag::P,
@@ -28,6 +32,11 @@ const ATTR_NAMES: &[AttrName] = &[
     AttrName::Width,
     AttrName::Align,
     AttrName::Bgcolor,
+    AttrName::ArcSize,
+    AttrName::FillColor,
+    AttrName::StrokeColor,
+    AttrName::XmlnsV,
+    AttrName::Charset,
 ];
 
 const URL_ATTRS: &[UrlAttr] = &[UrlAttr::Href, UrlAttr::Src];
@@ -143,8 +152,13 @@ fn tags_in(html: &str) -> Vec<String> {
                 j += 1;
             }
 
+            // ':' belongs to the name: VML tags are namespaced (`v:roundrect`),
+            // and stopping at the colon would both under-report them and let a
+            // smuggled `<v:...>` past this check.
             let mut name = String::new();
-            while j < bytes.len() && (bytes[j].is_ascii_alphanumeric() || bytes[j] == '-') {
+            while j < bytes.len()
+                && (bytes[j].is_ascii_alphanumeric() || bytes[j] == '-' || bytes[j] == ':')
+            {
                 name.push(bytes[j]);
                 j += 1;
             }
@@ -179,7 +193,11 @@ fn expected_tags(node: &Node, out: &mut Vec<String>) {
                 expected_tags(child, out);
             }
         }
-        Node::Text(_) | Node::Raw(_) => {}
+        Node::Text(_) | Node::Raw(_) | Node::Style(_) => {}
+        // Node is #[non_exhaustive], so from out here the compiler can no
+        // longer tell us a variant was added. Panic rather than skip, or a new
+        // variant would quietly stop being checked at all.
+        other => panic!("expected_tags does not handle {other:?}"),
     }
 }
 
@@ -219,7 +237,8 @@ fn expected_quotes(node: &Node) -> usize {
             n * 2 + el.children().iter().map(expected_quotes).sum::<usize>()
         }
         Node::Conditional { children, .. } => children.iter().map(expected_quotes).sum(),
-        Node::Text(_) | Node::Raw(_) => 0,
+        Node::Text(_) | Node::Raw(_) | Node::Style(_) => 0,
+        other => panic!("expected_quotes does not handle {other:?}"),
     }
 }
 

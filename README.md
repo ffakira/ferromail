@@ -1,24 +1,156 @@
 # ferromail
 
-Type-safe email component builder for Rust.
+[![crates.io](https://img.shields.io/crates/v/ferromail.svg)](https://crates.io/crates/ferromail)
+[![docs.rs](https://img.shields.io/docsrs/ferromail)](https://docs.rs/ferromail)
+[![CI](https://github.com/ffakira/ferromail/actions/workflows/ci.yml/badge.svg)](https://github.com/ffakira/ferromail/actions/workflows/ci.yml)
+
+Type-safe HTML email component builder for Rust.
 
 Email HTML is its own dialect: table layouts, inline styles, Outlook conditional
 comments. ferromail builds a markup tree you can't accidentally break, then
 renders it to something mail clients actually display.
 
+No runtime dependencies. Requires Rust 1.85.
+
 ## Status
 
-Early. The API does not exist yet, so don't depend on this.
+Proof of concept, and the API will change.
 
-## Design
+What works today: the markup tree and renderer, a `Document` wrapper that
+declares the VML namespaces, a bulletproof `Button` with a VML branch for
+Outlook and a table fallback for everyone else, a typed `Stylesheet` for media
+queries, and the `html!` macro.
 
-Components build a `markup` tree. Text escapes on render, and raw HTML needs an
-explicit constructor, so injection has exactly one auditable entry point. A
-renderer turns the tree into HTML.
+What is not established: **none of the output has been checked in a real email
+client.** The generated client-support report scores the markup against the
+caniemail dataset, but conditional comments are invisible to that check, so the
+Outlook path in particular rests on reasoning rather than evidence. Treat the
+Outlook support as untested.
 
-Tailwind support is planned behind a `tailwind` feature flag. Utility classes
-resolve to inline styles at build time, with media queries kept in a `<style>`
-block since they can't be inlined.
+The version published on crates.io predates most of the above.
+
+## Example
+
+```rust
+use ferromail::components::{Button, Document};
+use ferromail::html;
+use ferromail::markup::{Color, Url};
+use ferromail::render::render;
+
+let order = Url::parse("https://example.com/orders/42?ref=a&b=2").expect("valid");
+
+let body = html! {
+    table role=("presentation") width=("100%") {
+        tr {
+            td align=("center") {
+                h1 { "Thanks for your order" }
+                p { "We will email you when it ships." }
+            }
+        }
+    }
+};
+
+let button = Button::new(order, "View order")
+    .background(Color::hex("#2563eb").expect("valid"))
+    .build();
+
+let doc = Document::new("Thanks for your order")
+    .children(body)
+    .children(button)
+    .build();
+
+println!("{}", render(&[doc]));
+```
+
+Text is escaped on the way out, so `"View order <script>"` renders as
+`View order &lt;script&gt;` rather than markup.
+
+## The html! macro
+
+`html!` builds a `Vec<Node>`. It is syntax only: every form below expands to the
+builder call you would otherwise write by hand, so it opens no path the API does
+not already allow.
+
+| form | meaning |
+|---|---|
+| `tag { .. }` | an element with children |
+| `tag;` | an element with none, which is also the form void tags take |
+| `name=(expr)` | an attribute, parentheses always required |
+| `"literal"` | escaped text |
+| `(expr)` | escaped text from anything `Into<String>` |
+
+```rust
+use ferromail::html;
+use ferromail::markup::{ClassName, Url};
+
+let url = Url::parse("https://example.com/logo.png").expect("valid");
+let name = "Ada & <Lovelace>";
+
+let nodes = html! {
+    div class=(ClassName::new("stack").expect("valid")) {
+        img src=(url) alt=("Logo") width=(120);
+        p { "Hello, " (name) "!" }
+    }
+};
+```
+
+Attributes route by name. `href` and `src` go to `url_attr` and take a parsed
+`Url`, `class` takes a `ClassName`, and everything else becomes an `AttrValue`
+and is escaped on render.
+
+The tag and attribute tables are closed, so a name outside them is a compile
+error that says which one and what to do about it, rather than a macro matcher
+failure:
+
+```text
+error: html!: unknown attribute `onclick`. Event handlers such as onclick have
+no variant by design and never will. For anything else, add a variant to
+markup::AttrName and an arm to __html_attr_name!. Note href and src are not
+here: they take a parsed Url through url_attr.
+```
+
+## What is enforced
+
+Untrusted strings cannot become markup. Every value that reaches an attribute
+goes through a type that rejects anything able to close it, and the checks live
+in the type rather than in a convention the caller has to remember:
+
+- `Url` accepts `http`, `https`, `mailto` and `tel` only. There is no
+  `AttrName::Href`, so the only route to `href` and `src` is `url_attr`, which
+  demands a parsed `Url`. `javascript:` has no path in.
+- `StyleValue` rejects CSS functions, comments and backslash escapes, so
+  `expression()` and its encoded variants cannot appear in a `style` attribute.
+- `Color::hex` is the only way to build a colour, which is what lets
+  `Button::build` return nodes instead of a `Result`.
+- `Stylesheet` is typed down to the selector, so `</style>` cannot be written
+  from inside a `<style>` block.
+- `RawHtml::trusted` is the single unescaped entry point, and it is named so it
+  shows up in review.
+
+Outlook conditional comments are typed rather than strings, so `!mso` emits the
+downlevel-revealed syntax instead of silently hiding its content.
+
+The `html!` macro is syntax only. It expands to the same builder calls, so it
+opens no path the API does not already allow.
+
+## Not done yet
+
+Tailwind-style utilities, more components, and a fluid container. Media queries
+exist but are an enhancement: Gmail's app strips `<style>` for non-Gmail
+accounts and Outlook ignores media queries, so the inline layout still has to
+stand on its own.
+
+## Development
+
+```sh
+cargo test
+docker compose up -d                                       # local SMTP catcher
+cargo run --example send                                   # preview at :8025
+cargo test --test client_support -- --ignored --nocapture  # client-support report
+```
+
+See [docs/PHILOSOPHY.md](https://github.com/ffakira/ferromail/blob/main/docs/PHILOSOPHY.md)
+for why the crate is shaped this way.
 
 ## License
 

@@ -1,0 +1,25 @@
+# Local SMTP catcher for the preview loop and the client-support report.
+#
+#   docker compose up -d
+#   cargo run --example send                                   # visual check
+#   cargo test --test client_support -- --ignored --nocapture  # report
+#   open http://localhost:8025
+#
+# The tag is pinned deliberately. Mailpit bundles the caniemail dataset that
+# `html-check` scores against, so the version here and the numbers committed in
+# target/client-support.md move together. Bump it as a conscious step and
+# regenerate the report, or the two silently disagree.
+
+services:
+  mailpit:
+    image: axllent/mailpit:v1.30.4
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP, what examples/send.rs and the report post to
+      - "8025:8025" # web UI + REST API
+    environment:
+      # Messages live in memory only; this is a test fixture, not an archive.
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
