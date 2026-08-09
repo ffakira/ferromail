@@ -61,6 +61,13 @@ fn node_to(node: &Node, out: &mut String) {
         Node::Text(text) => escape_text(text, out),
         Node::Raw(raw) => out.push_str(raw.as_str()),
         Node::Element(el) => element_to(el, out),
+        // XHTML 1.0 Transitional rather than the HTML5 one, because the
+        // renderer closes void elements as `<img />`, which this doctype
+        // requires and HTML5 merely tolerates.
+        Node::Doctype => out.push_str(
+            "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \
+             \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">",
+        ),
         // Not escaped, and it does not need to be: every part of a Stylesheet
         // is a ClassName, Property or StyleValue, all of which reject `<` and
         // `>`, so `</style>` cannot occur. An empty sheet emits nothing rather

@@ -59,7 +59,7 @@ let doc = Document::new("Thanks for your order")
     .children(button)
     .build();
 
-println!("{}", render(&[doc]));
+println!("{}", render(&doc));
 ```
 
 Text is escaped on the way out, so `"View order <script>"` renders as

@@ -1,5 +1,6 @@
 //! The `<html>` wrapper an email needs before VML will render.
 
+use super::styled;
 use crate::markup::{AttrName, AttrValue, Element, Node, Stylesheet, Tag};
 
 /// VML namespaces, required on `<html>` for `v:` and `w:` elements to render
@@ -16,6 +17,7 @@ const WORD_NS: &str = "urn:schemas-microsoft-com:office:word";
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Document {
     title: String,
+    language: String,
     stylesheet: Stylesheet,
     children: Vec<Node>,
 }
@@ -24,9 +26,20 @@ impl Document {
     pub fn new(title: impl Into<String>) -> Self {
         Self {
             title: title.into(),
+            language: "en".to_owned(),
             stylesheet: Stylesheet::new(),
             children: Vec::new(),
         }
+    }
+
+    /// The `lang` attribute on `<html>`, defaulting to `en`.
+    ///
+    /// A screen reader picks its pronunciation from this, so the default is a
+    /// guess that is wrong for most of the world. Set it.
+    #[must_use]
+    pub fn language(mut self, tag: impl Into<String>) -> Self {
+        self.language = tag.into();
+        self
     }
 
     /// Sets the `<style>` block in the head.
@@ -55,9 +68,12 @@ impl Document {
         self
     }
 
-    /// Builds the `<html>` element. Infallible: every value is crate-owned or
-    /// escaped at render time.
-    pub fn build(self) -> Node {
+    /// Builds the doctype and the `<html>` element.
+    ///
+    /// Two nodes, because a doctype has to precede `<html>` and is not an
+    /// element. Infallible: every value is crate-owned or escaped at render
+    /// time.
+    pub fn build(self) -> Vec<Node> {
         let head = Element::new(Tag::Head)
             .child(Node::Element(
                 Element::new(Tag::Meta).attr(AttrName::Charset, AttrValue::Text("utf-8".into())),
@@ -75,18 +91,27 @@ impl Document {
             ))
             .child(Node::Style(self.stylesheet.clone()));
 
-        let body = self
-            .children
-            .into_iter()
-            .fold(Element::new(Tag::Body), Element::child);
+        // Clients that keep <body> apply a default margin. Those that strip
+        // it ignore this, which is why Container exists as well.
+        let body = self.children.into_iter().fold(
+            styled(
+                Element::new(Tag::Body),
+                &[("margin", "0"), ("padding", "0"), ("width", "100%")],
+            ),
+            Element::child,
+        );
 
-        Node::Element(
-            Element::new(Tag::Html)
-                .attr(AttrName::XmlnsV, AttrValue::Text(VML_NS.into()))
-                .attr(AttrName::XmlnsW, AttrValue::Text(WORD_NS.into()))
-                .child(Node::Element(head))
-                .child(Node::Element(body)),
-        )
+        vec![
+            Node::Doctype,
+            Node::Element(
+                Element::new(Tag::Html)
+                    .attr(AttrName::Lang, AttrValue::Text(self.language.clone()))
+                    .attr(AttrName::XmlnsV, AttrValue::Text(VML_NS.into()))
+                    .attr(AttrName::XmlnsW, AttrValue::Text(WORD_NS.into()))
+                    .child(Node::Element(head))
+                    .child(Node::Element(body)),
+            ),
+        ]
     }
 }
 
@@ -99,7 +124,7 @@ mod tests {
 
     #[test]
     fn declares_the_vml_namespaces() {
-        let html = render(&[Document::new("Hi").build()]);
+        let html = render(&Document::new("Hi").build());
 
         assert!(
             html.contains(r#"xmlns:v="urn:schemas-microsoft-com:vml""#),
@@ -112,17 +137,49 @@ mod tests {
     }
 
     #[test]
+    fn starts_with_a_doctype_before_the_html_element() {
+        let html = render(&Document::new("Hi").build());
+
+        assert!(html.starts_with("<!DOCTYPE html PUBLIC"), "{html}");
+        let doctype = html.find("<!DOCTYPE").expect("doctype");
+        let root = html.find("<html").expect("html");
+        assert!(doctype < root, "{html}");
+    }
+
+    #[test]
+    fn language_defaults_to_en_and_can_be_set() {
+        let default = render(&Document::new("Hi").build());
+        assert!(default.contains(r#"<html lang="en""#), "{default}");
+
+        let set = render(&Document::new("Oi").language("pt-BR").build());
+        assert!(set.contains(r#"<html lang="pt-BR""#), "{set}");
+    }
+
+    /// Clients that keep <body> apply a default margin. The ones that strip it
+    /// are why Container exists as well, so this is a complement, not a fix.
+    #[test]
+    fn body_carries_a_reset() {
+        let html = render(&Document::new("Hi").build());
+        assert!(
+            html.contains(r#"<body style="margin:0;padding:0;width:100%">"#),
+            "{html}"
+        );
+    }
+
+    #[test]
     fn title_is_escaped() {
-        let html = render(&[Document::new("a < b & c").build()]);
+        let html = render(&Document::new("a < b & c").build());
         assert!(html.contains("<title>a &lt; b &amp; c</title>"), "{html}");
     }
 
     #[test]
     fn a_button_in_the_body_has_its_namespaces() {
         let href = Url::parse("https://example.com").expect("valid");
-        let html = render(&[Document::new("Confirm")
-            .children(Button::new(href, "Confirm").build())
-            .build()]);
+        let html = render(
+            &Document::new("Confirm")
+                .children(Button::new(href, "Confirm").build())
+                .build(),
+        );
 
         // The namespace declaration must precede the element that needs it.
         let ns = html.find("xmlns:v=").expect("namespace present");

@@ -67,11 +67,11 @@ fn fixtures() -> Vec<Fixture> {
     vec![
         Fixture {
             name: "document-empty",
-            html: render(&[Document::new("Empty").build()]),
+            html: render(&Document::new("Empty").build()),
         },
         Fixture {
             name: "document-with-button",
-            html: render(&[Document::new("Confirm").children(button().build()).build()]),
+            html: render(&Document::new("Confirm").children(button().build()).build()),
         },
         Fixture {
             name: "button-bare",
@@ -79,14 +79,16 @@ fn fixtures() -> Vec<Fixture> {
         },
         Fixture {
             name: "table-layout",
-            html: render(&[Document::new("Table")
-                .child(Node::Element(
-                    Element::new(Tag::Table).child(Node::Element(
-                        Element::new(Tag::Tr)
-                            .child(Node::Element(Element::new(Tag::Td).text("cell"))),
-                    )),
-                ))
-                .build()]),
+            html: render(
+                &Document::new("Table")
+                    .child(Node::Element(
+                        Element::new(Tag::Table).child(Node::Element(
+                            Element::new(Tag::Tr)
+                                .child(Node::Element(Element::new(Tag::Td).text("cell"))),
+                        )),
+                    ))
+                    .build(),
+            ),
         },
     ]
 }

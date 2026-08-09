@@ -1,6 +1,6 @@
 //! Centered, width-limited wrapper for email body content.
 
-use super::{prop, styled};
+use super::{prop, px, styled};
 use crate::markup::{AttrName, AttrValue, Color, Element, Node, Tag};
 
 /// A centered column that fills a narrow viewport and stops growing on a wide one.
@@ -167,15 +167,6 @@ impl Container {
         Node::Element(outer.child(Node::Element(
             Element::new(Tag::Tr).child(Node::Element(cell)),
         )))
-    }
-}
-
-/// A zero length needs no unit, and `0px 16px` reads worse than `0 16px`.
-fn px(n: u32) -> String {
-    if n == 0 {
-        "0".to_owned()
-    } else {
-        format!("{n}px")
     }
 }
 

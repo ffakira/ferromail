@@ -36,6 +36,10 @@ pub enum Node {
     Element(Element),
     Text(String),
     Raw(RawHtml),
+    /// The document type declaration, which has to precede `<html>` and is not
+    /// an element. A variant rather than [`RawHtml`] so it carries no string a
+    /// caller could have supplied.
+    Doctype,
     /// A `<style>` block. Its own variant rather than an [`Element`] holding
     /// text, because CSS is not escaped on the way out. The guarantee that
     /// nothing can close the block comes from [`Stylesheet`] being typed all

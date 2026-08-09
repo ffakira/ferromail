@@ -9,11 +9,22 @@ patch releases. They are marked **Breaking** below.
 
 ## [Unreleased] 0.0.3
 
-Nothing yet.
+### Added
 
-Planned: a fluid container so layout survives clients that strip `<style>`,
-Tailwind-style utilities, and rendering checked against a real Outlook rather
-than reasoned about.
+- `components::Container`, a centered column that fills a narrow viewport and
+  stops growing on a wide one. The inner table carries both a `width` attribute
+  and a `max-width` declaration: Outlook honours the attribute and ignores the
+  declaration, every other client does the reverse, so the column is fluid
+  without a conditional comment. Padding sits on the content cell, inside the
+  column, so it eats into the width rather than adding to it.
+
+  This answers the worst finding in the client-support report: `<body>` is
+  unsupported in 16 clients, so width, background and centering cannot live
+  there.
+
+Planned: Tailwind-style utilities, a divider for spacing between siblings since
+Outlook ignores margin, and rendering checked against a real Outlook rather than
+reasoned about.
 
 ## [0.0.2] 2026-08-09
 

@@ -3,12 +3,16 @@
 use crate::markup::{Element, Property, StyleValue};
 
 pub mod button;
+pub mod column;
 pub mod container;
 pub mod document;
+pub mod row;
 
 pub use button::Button;
+pub use column::{Column, STACK_CLASS, stack_rules};
 pub use container::Container;
 pub use document::Document;
+pub use row::Row;
 
 /// Interns a property name written as a literal in this crate.
 ///
@@ -37,6 +41,22 @@ pub(crate) fn decl(property: &str, value: &str) -> (Property, StyleValue) {
 ///
 /// Only for values this crate generates. Anything a caller supplied should
 /// already be a validated [`StyleValue`] and go through [`Element::style`].
+/// A zero length needs no unit, and `0px 16px` reads worse than `0 16px`.
+pub(crate) fn px(n: u32) -> String {
+    if n == 0 {
+        "0".to_owned()
+    } else {
+        format!("{n}px")
+    }
+}
+
+/// # Panics
+///
+/// If `raw` is not a valid declaration value. See [`prop`].
+pub(crate) fn value(raw: &str) -> StyleValue {
+    StyleValue::parse(raw).expect("valid style literal")
+}
+
 pub(crate) fn styled(el: Element, decls: &[(&str, &str)]) -> Element {
     decls.iter().fold(el, |el, (property, value)| {
         let (p, v) = decl(property, value);

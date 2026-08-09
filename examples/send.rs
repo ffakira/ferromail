@@ -37,9 +37,11 @@ fn sample() -> String {
         .size(240, 48)
         .radius(6);
 
-    render(&[Document::new("Confirm your email")
-        .children(button.build())
-        .build()])
+    render(
+        &Document::new("Confirm your email")
+            .children(button.build())
+            .build(),
+    )
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
