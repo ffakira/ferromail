@@ -1,6 +1,7 @@
 //! The element names this crate can emit.
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[non_exhaustive]
 pub enum Tag {
     // document
     Html,

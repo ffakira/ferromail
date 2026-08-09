@@ -13,6 +13,7 @@ use super::Url;
 ///
 /// [`Element::url_attr`]: super::Element::url_attr
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[non_exhaustive]
 pub enum UrlAttr {
     Href,
     Src,
@@ -29,6 +30,7 @@ impl UrlAttr {
 
 /// Attributes that carry a plain value. See [`UrlAttr`] for `href` and `src`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[non_exhaustive]
 pub enum AttrName {
     Alt,
     Title,
@@ -94,6 +96,7 @@ impl AttrName {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum AttrValue {
     Text(String),
     Int(u32),

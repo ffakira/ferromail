@@ -4,6 +4,7 @@
 pub struct Url(String);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum UrlError {
     Empty,
     DisallowedScheme,

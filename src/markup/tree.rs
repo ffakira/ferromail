@@ -25,6 +25,7 @@ impl RawHtml {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum Node {
     Element(Element),
     Text(String),
@@ -42,6 +43,7 @@ pub enum Node {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum Condition {
     Mso,
     NotMso,

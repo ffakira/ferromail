@@ -6,6 +6,7 @@ use crate::markup::Url;
 pub struct StyleValue(String);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum StyleValueError {
     Empty,
     IllegalChar(char),

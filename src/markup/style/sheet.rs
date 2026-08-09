@@ -24,6 +24,7 @@ use super::{ClassName, Property, StyleMap, StyleValue};
 /// Classes only. Element and id selectors are unreliable across clients, and a
 /// class is the one thing an email can attach and target predictably.
 #[derive(Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum Selector {
     Class(ClassName),
 }
@@ -44,6 +45,7 @@ impl Selector {
 /// `only screen` is included because some older clients apply the block
 /// regardless of media type otherwise.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[non_exhaustive]
 pub enum MediaQuery {
     MaxWidth(u32),
     MinWidth(u32),

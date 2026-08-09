@@ -194,6 +194,10 @@ fn expected_tags(node: &Node, out: &mut Vec<String>) {
             }
         }
         Node::Text(_) | Node::Raw(_) | Node::Style(_) => {}
+        // Node is #[non_exhaustive], so from out here the compiler can no
+        // longer tell us a variant was added. Panic rather than skip, or a new
+        // variant would quietly stop being checked at all.
+        other => panic!("expected_tags does not handle {other:?}"),
     }
 }
 
@@ -234,6 +238,7 @@ fn expected_quotes(node: &Node) -> usize {
         }
         Node::Conditional { children, .. } => children.iter().map(expected_quotes).sum(),
         Node::Text(_) | Node::Raw(_) | Node::Style(_) => 0,
+        other => panic!("expected_quotes does not handle {other:?}"),
     }
 }
 
