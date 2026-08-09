@@ -81,11 +81,15 @@ impl Button {
     /// VML has no `border-radius`; it takes the corner as a percentage of the
     /// shorter side, capped at the 50% that makes a pill.
     fn arcsize(&self) -> String {
-        let pct = if self.height_px == 0 {
-            0
-        } else {
-            (self.radius_px.saturating_mul(100) / self.height_px).min(50)
-        };
+        // checked_div rather than guarding on height first: a zero height is
+        // degenerate anyway, and 0% is the right answer for it.
+        let pct = self
+            .radius_px
+            .saturating_mul(100)
+            .checked_div(self.height_px)
+            .unwrap_or(0)
+            .min(50);
+
         format!("{pct}%")
     }
 
@@ -240,6 +244,14 @@ mod tests {
             "#2563eb",
             "hex should normalise to lowercase"
         );
+    }
+
+    #[test]
+    fn arcsize_of_a_zero_height_button_is_zero() {
+        let href = Url::parse("https://example.com").expect("valid");
+        let html = render(&Button::new(href, "x").size(200, 0).radius(8).build());
+
+        assert!(html.contains(r#"arcsize="0%""#), "{html}");
     }
 
     #[test]
