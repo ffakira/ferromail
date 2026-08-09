@@ -1,5 +1,11 @@
 //! The element names this crate can emit.
 
+/// The elements this crate can emit.
+///
+/// A closed set with no escape hatch for arbitrary names, so a tag that is
+/// not here cannot be rendered. Includes the two VML elements Outlook needs,
+/// which are only valid inside an `mso` conditional and require the
+/// namespaces [`Document`](crate::components::Document) declares.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[non_exhaustive]
 pub enum Tag {

@@ -6,6 +6,11 @@ use super::{
     AttrName, AttrValue, ClassName, Property, StyleMap, StyleValue, Stylesheet, Tag, Url, UrlAttr,
 };
 
+/// Markup that is rendered verbatim.
+///
+/// The only unescaped route into a document, and the only place in the crate
+/// where caller input can become markup. Its constructor is named
+/// [`RawHtml::trusted`] so the claim shows up in review.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RawHtml(String);
 
@@ -24,6 +29,7 @@ impl RawHtml {
     }
 }
 
+/// One item in the tree an email is built from.
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[non_exhaustive]
 pub enum Node {
@@ -37,11 +43,20 @@ pub enum Node {
     /// that job to the escaper instead.
     Style(Stylesheet),
     Conditional {
+        /// Which clients see the children.
         cond: Condition,
+        /// Rendered inside the comment, so nothing here reaches a client the
+        /// condition excludes.
         children: Vec<Node>,
     },
 }
 
+/// The condition on an Outlook conditional comment.
+///
+/// An enum rather than a string, because a string containing `]>` closes the
+/// comment early and renders everything after it. Being typed also lets the
+/// renderer pick the downlevel-revealed form for [`Condition::NotMso`], which
+/// a string could never have signalled.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[non_exhaustive]
 pub enum Condition {
@@ -64,6 +79,10 @@ impl Condition {
     }
 }
 
+/// A single element: a tag, its attributes, and its children.
+///
+/// Fields are private and the builder methods are the only way in, so the
+/// checks each value type performs cannot be sidestepped.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Element {
     tag: Tag,

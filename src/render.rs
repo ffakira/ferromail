@@ -1,5 +1,53 @@
+//! Turning a [`Node`] tree into HTML.
+//!
+//! This is where escaping happens, and it is the only place that writes to the
+//! output. Everything it emits verbatim is safe because of the type it came
+//! from, not because of a check performed here. See [`render`].
+
 use crate::markup::{AttrValue, Element, Node};
 
+/// Serialises a node tree to HTML.
+///
+/// The output is a single line with no whitespace between elements. Gmail
+/// clips a message once it passes 102KB and hides everything after the cut,
+/// so bytes spent on indentation are bytes not spent on content.
+///
+/// ```
+/// use ferromail::markup::{Element, Node, Tag};
+/// use ferromail::render::render;
+///
+/// let el = Element::new(Tag::P).text("5 > 3 & rising");
+/// assert_eq!(render(&[Node::Element(el)]), "<p>5 &gt; 3 &amp; rising</p>");
+/// ```
+///
+/// # Escaping
+///
+/// Text and attribute values are escaped here, which is what stops a string
+/// that came from outside the program becoming markup.
+///
+/// Four things are written verbatim, and each is safe by construction rather
+/// than by a check performed at this point:
+///
+/// - [`RawHtml`](crate::markup::RawHtml) is the deliberate escape hatch. Its
+///   only constructor is
+///   [`RawHtml::trusted`](crate::markup::RawHtml::trusted), named so the claim
+///   the caller is making shows up in review.
+/// - [`Stylesheet`](crate::markup::Stylesheet) is typed down to the selector,
+///   so `</style>` cannot occur inside a `<style>` block.
+/// - [`ClassName`](crate::markup::ClassName) rejects quotes and angle
+///   brackets, so a class cannot close the `class` attribute.
+/// - [`Property`](crate::markup::Property) and
+///   [`StyleValue`](crate::markup::StyleValue) reject the characters that
+///   could end a declaration or the `style` attribute.
+///
+/// Conditional comments are emitted from [`Condition`](crate::markup::Condition)
+/// rather than a string, so `!mso` gets the downlevel-revealed form and a
+/// condition cannot close the comment early.
+///
+/// # Void elements
+///
+/// A void tag renders as `<x />` and its children are dropped. See
+/// [`Element::child`](crate::markup::Element::child).
 pub fn render(nodes: &[Node]) -> String {
     let mut out = String::new();
     for node in nodes {

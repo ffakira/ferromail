@@ -1,8 +1,15 @@
 //! URL parsing behind a scheme allowlist.
 
+/// A URL whose scheme is on the allowlist.
+///
+/// [`Url::parse`] is the only constructor, so holding one means the check has
+/// already happened. This is what makes `href` and `src` safe: they are
+/// reachable only through [`UrlAttr`](crate::markup::UrlAttr), which demands
+/// a `Url`.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Url(String);
 
+/// Why [`Url::parse`] refused a string.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[non_exhaustive]
 pub enum UrlError {

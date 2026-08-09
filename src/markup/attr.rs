@@ -95,6 +95,11 @@ impl AttrName {
     }
 }
 
+/// What a plain attribute holds.
+///
+/// Text is escaped at render, so this variant is safe to build from caller
+/// input. URL-bearing attributes do not use this type at all: they take a
+/// [`Url`] through [`Element::url_attr`](crate::markup::Element::url_attr).
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[non_exhaustive]
 pub enum AttrValue {
